@@ -14,6 +14,9 @@ BACKLOG = 5
 ENCODING = 'utf-8'
 BUFSIZE = 1024
 TIMEOUT_S = 1
+FIN=1
+SYN=2
+ACK=0x10
 
 
 class Server(object):
@@ -91,6 +94,7 @@ class Server(object):
 
     def s_listen(self, verbose=False):
         # Listening for packet
+        print 'State: Listening'
         data, addr = None, None
         while 1:
             response = self.listen_for()
@@ -102,20 +106,21 @@ class Server(object):
                 packet = TCPPacket().from_binary(data)
                 self.packets.append(packet)
                 self.addr = addr
-                print('_____\n{0}\n_____'.format(packet))
-                reply = TCPPacket(tcpflags=2, seqNum=1, ackNum=0, data='I am server')
+                print('____________\n{0}\n~~~~~~~~~~~~~~~~'.format(packet))
+                reply = TCPPacket(tcpflags=SYN|ACK, seqNum=1, ackNum=0, data='I am server')
                 self.sock.sendto(reply.bin, addr)
                 return 1
 
 
     def s_established(self):
         # TCP connection established
-        pass
+        print 'State: Established'
 
     def s_syn_rcvd(self):
         pass
 
     def s_syn_sent(self):
+        print 'State: Syn Sent'
         data, addr = None, None
         while 1:
             response = self.listen_for()
@@ -126,7 +131,12 @@ class Server(object):
                 print('Incoming from: {0}'.format(addr))
                 packet = TCPPacket().from_binary(data)
                 print('_____\n{0}\n_____'.format(packet))
-                reply = TCPPacket(tcpflags=0x12, seqNum=1, ackNum=0, data='I am server')
+                seq = packet.seqnum
+                ack = packet.acknum
+                reply = TCPPacket(tcpflags=ACK, seqNum=seq+1, ackNum=seq+1, data='I am server')
+                print('Reply=======================')
+                print reply
+                print('End Reply ==================')
                 self.sock.sendto(reply.bin, addr)
                 return 1
 

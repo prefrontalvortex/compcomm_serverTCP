@@ -10,6 +10,9 @@ from header import *
 PORT_OUT = 1337
 HOST = ''
 BUFSIZE=4096
+FIN=1
+SYN=2
+ACK=0x10
 
 class Client(object):
     def __init__(self, host=HOST, port=PORT_OUT):
@@ -28,20 +31,29 @@ class Client(object):
 
     def send(self, message):
 
-
-        packet = TCPPacket(data=message, tcpflags=2, verbose=True)
+        seq_init = 1337
+        packet = TCPPacket(data=message, tcpflags=2, seqNum=seq_init, verbose=True)
 
         self.sock.sendto(packet.bin, (self.host, self.port))
         data, addr = self.sock.recvfrom(BUFSIZE)
         packet = TCPPacket().from_binary(data)
 
-        # addr = host
-        # sock.close()
-        # stop = time.time()
         print('Reply from {0}: \n_____\n{1}\n_____'.format(addr, packet))
         # print('Elapsed: {0}'.format(stop-start))
 
+    def establish(self, message):
+
+        seq_init = 1337
+        packet = TCPPacket(data=message, tcpflags=SYN, seqNum=seq_init, verbose=True)
+
+        self.sock.sendto(packet.bin, (self.host, self.port))
+        data, addr = self.sock.recvfrom(BUFSIZE)
+        packet = TCPPacket().from_binary(data)
+
+        print('Reply from {0}: \n_____\n{1}\n_____'.format(addr, packet))
+        packet = TCPPacket(data=message, tcpflags=ACK, seqNum=seq_init, verbose=True)
+        self.sock.sendto(packet.bin, (self.host, self.port))
 
 if __name__ == "__main__":
     client = Client()
-    client.send('I am the client')
+    client.establish('I am the client')

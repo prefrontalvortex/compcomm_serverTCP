@@ -24,8 +24,8 @@ class IPHeader(object):
 
 class TCPPacket(object):
     def __init__(self,
-                 sourcePort=0,
-                 destPort=0,
+                 sourcePort=0xABCD,
+                 destPort=0xEF12,
                  seqNum=0,
                  ackNum=0,
                  offset=6,
@@ -39,8 +39,8 @@ class TCPPacket(object):
                  ):
         self.sourcePort = bits(0,16)
         self.destPort = bits(0,16)
-        self.seqNum = bits(0,32)
-        self.ackNum = bits(0,21)
+        self._seqNum = bits(0, 32)
+        self._ackNum = bits(0, 21)
         self.offset = bits(0,4)
         self.reserved = bits(0,4)
         self.tcpflags = bits(0,8)
@@ -66,8 +66,8 @@ class TCPPacket(object):
             tcpOptions = bits(tcpOptions, 32)
             self.sourcePort = sourcePort
             self.destPort = destPort
-            self.seqNum = seqNum
-            self.ackNum = ackNum
+            self._seqNum = seqNum
+            self._ackNum = ackNum
             self.offset = offset
             self.reserved = reserved
             self.tcpflags = tcpflags
@@ -83,7 +83,7 @@ class TCPPacket(object):
 
 
     def make_header(self):
-        self.header = self.sourcePort + self.destPort + self.seqNum + self.ackNum + self.offset + self.reserved \
+        self.header = self.sourcePort + self.destPort + self._seqNum + self._ackNum + self.offset + self.reserved \
                       + self.tcpflags + self.window + self.checksum + self.urgpointer + self.tcpOptions
         return self.header
 
@@ -93,15 +93,19 @@ class TCPPacket(object):
         return self.bin
 
     @property
-    def syn(self): return (self.tcpflags & 2) >> 1
+    def seqnum(self): return self._seqNum.to_int()
 
     @property
-    def ack(self):
-        return (self.tcpflags & 0x10) >> 4
+    def acknum(self): return self._ackNum.to_int()
 
     @property
-    def fin(self):
-        return (self.tcpflags & 1)
+    def syn(self): return ((self.tcpflags & 2) >> 1).to_int()
+
+    @property
+    def ack(self): return ((self.tcpflags & 0x10) >> 4).to_int()
+
+    @property
+    def fin(self): return (self.tcpflags & 1)
 
     def set_ack(self, bitset=1): self.tcpflags = self.tcpflags | 0x10
     def set_push(self, bitset=1): self.tcpflags = self.tcpflags | 8
@@ -132,8 +136,8 @@ class TCPPacket(object):
         self.data = data
         self.sourcePort = bits(short(packet[:2]))
         self.destPort = bits(short(packet[2:4]))
-        self.seqNum = bits(sint(packet[4:8]))
-        self.ackNum = bits(sint(packet[8:12]))
+        self._seqNum = bits(sint(packet[4:8]))
+        self._ackNum = bits(sint(packet[8:12]))
         self.offset = bits(offset)
         self.reserved = bits((offset_reserved & 0xF))
         self.tcpflags = bits(numa(packet[13]))
@@ -147,7 +151,7 @@ class TCPPacket(object):
 
     def __str__(self):
         rep = 'Source port: {0}\nDestination port: {1}\nSequence Num: {2}\nAcknowledgeNum: {3}\n'.format(
-            self.sourcePort, self.destPort, self.seqNum, self.ackNum)
+            self.sourcePort.to_int(), self.destPort.to_int(), self._seqNum.to_int(), self._ackNum.to_int())
         rep = rep + 'Window: {0}\nChecksum: {1}\nTCP Options: {2}\n'.format(
             self.window, self.checksum, self.tcpOptions)
         rep = rep + 'Flags: {0:0>8}\n'.format(bin(self.tcpflags.to_int())[2:])
