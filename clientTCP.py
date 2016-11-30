@@ -5,40 +5,43 @@
 from __future__ import print_function, division
 import socket
 import time
+from header import *
 
 PORT_OUT = 1337
 HOST = ''
+BUFSIZE=4096
 
-def send(message, host, port, proto='udp'):
-    if proto == 'udp':
+class Client(object):
+    def __init__(self, host=HOST, port=PORT_OUT):
+        self.start = time.time()
+        self.host = host
+        self.port = port
+
         socktype = socket.SOCK_DGRAM
-    elif proto == 'tcp':
-        socktype = socket.SOCK_STREAM
-    else:
-        raise NotImplementedError('Invalid configuration: {0}'.format(proto))
+        try:
+            self.sock = socket.socket(socket.AF_INET, socktype)
+        except socket.error as err:
+            print('Failed to create socket. Error Code : ' + str(err[0]) + ' Message ' + err[1])
+            raise err
 
-    try:
-        sock = socket.socket(socket.AF_INET, socktype)
-    except socket.error as err:
-        print('Failed to create socket. Error Code : ' + str(err[0]) + ' Message ' + err[1])
-        raise err
+        print('{0} Socket bind complete. Host: {1}:{2}'.format('udp', host, port))
 
-    print('{0} Socket bind complete. Host: {1}:{2}'.format(proto, host, port))
+    def send(self, message):
 
-    start = time.time()
-    if proto == 'udp':
-        sock.sendto(str.encode(message), (host, port))
-    elif proto == 'tcp':
-        sock.connect((host, port))
-        sock.send(str.encode(message))
-    data, addr = sock.recvfrom(config.BUFSIZE)
-    addr = host
-    sock.close()
-    stop = time.time()
-    print('Reply from {0}: \n_____\n{1}\n_____'.format(addr, str.decode(data)))
-    print('Elapsed: {0}'.format(stop-start))
+
+        packet = TCPPacket(data=message, tcpflags=2, verbose=True)
+
+        self.sock.sendto(packet.bin, (self.host, self.port))
+        data, addr = self.sock.recvfrom(BUFSIZE)
+        packet = TCPPacket().from_binary(data)
+
+        # addr = host
+        # sock.close()
+        # stop = time.time()
+        print('Reply from {0}: \n_____\n{1}\n_____'.format(addr, packet))
+        # print('Elapsed: {0}'.format(stop-start))
 
 
 if __name__ == "__main__":
-    proto = 'tcp'
-    send('Hello {0} server!'.format(proto), PORT_OUT, proto)
+    client = Client()
+    client.send('I am the client')

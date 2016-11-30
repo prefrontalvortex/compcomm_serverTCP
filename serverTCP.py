@@ -2,6 +2,7 @@
     Michael McDermott - Computer Comm Networks
     UDP and TCP echo server
 '''
+import sys
 import socket
 import time
 import random
@@ -16,19 +17,9 @@ TIMEOUT_S = 1
 
 
 class Server(object):
-    def __init__(self, host, port, timeout=1, delay=False):
+    def __init__(self, host, port, timeout=9, delay=False):
+        self.packets=[]
         self.setup(host, port, timeout, delay)
-        # self.tim()
-
-    def tim(self):
-        BUFFSIZE = 1024
-        address = ('localhost', 1337)
-
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.bind(address)
-        sock.settimeout(TIMEOUT_S)
-
-        data = sock.recvfrom(4096)
 
     def setup(self, host, port, timeout=1, delay=False):
         self.proto = proto
@@ -37,7 +28,11 @@ class Server(object):
         self.host = host
         self.timeout = timeout
 
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        except socket.error as err:
+            print('Failed to create socket. Error Code : ' + str(err[0]) + ' Message ' + err[1])
+            raise err
         self.sock.bind((host, port))
         self.sock.settimeout(1)
 
@@ -58,6 +53,20 @@ class Server(object):
     def run(self):
         data, addr = None, None
         while 1:
+            test = self.s_listen()
+            test = self.s_syn_sent()
+
+    def state_caller(self):
+        pass
+
+
+    def s_closed(self):
+        pass
+
+    def listen_for(self, timeout=False, verbose=False):
+        listening=True
+        data, addr = None, None
+        while listening:
             # receive data from client (data, addr)
             try:
                 data, addr = self.sock.recvfrom(BUFSIZE)
@@ -65,9 +74,11 @@ class Server(object):
             except KeyboardInterrupt:
                 print('!keyboard interrupt, terminating\n')
                 self.sock.close()
+                sys.exit(1)
                 break
             except socket.timeout as err:
-                print('Timeout occured!')
+                if verbose: print('Timeout')
+                if timeout: return Timeout()
             except socket.error as err:
                 if err[0] == 9:
                     self.sock.close()
@@ -75,35 +86,60 @@ class Server(object):
                 else:
                     raise err
 
-            if not data:
-                break
-            print('Incoming from: {0}'.format(addr))
-            print('_____\n{0}\n_____'.format(str.decode(data)))
+            if data:
+                return data, addr
 
-            reply = data
-            # if self.delay:
-            #     delaytime = random.randint(1,10)
-            #     print('Sleeping for {0} s'.format(delaytime))
-            #     time.sleep(delaytime)
-            # else:
-            #     delaytime = 0
+    def s_listen(self, verbose=False):
+        # Listening for packet
+        data, addr = None, None
+        while 1:
+            response = self.listen_for()
+            if isinstance(response, tuple):
+                data, addr = response
+
+            if data:
+                print('Incoming from: {0}'.format(addr))
+                packet = TCPPacket().from_binary(data)
+                self.packets.append(packet)
+                self.addr = addr
+                print('_____\n{0}\n_____'.format(packet))
+                reply = TCPPacket(tcpflags=2, seqNum=1, ackNum=0, data='I am server')
+                self.sock.sendto(reply.bin, addr)
+                return 1
 
 
-            if self.proto == 'udp':
-                self.sock.sendto(reply, addr)
-            # elif self.proto == 'tcp':
-            #     client.send(reply)
+    def s_established(self):
+        # TCP connection established
+        pass
 
-def tim():
-    TIMEOUT_S = 3
-    BUFFSIZE = 1024
-    address = ('localhost', 1337)
+    def s_syn_rcvd(self):
+        pass
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(address)
-    sock.settimeout(3)
+    def s_syn_sent(self):
+        data, addr = None, None
+        while 1:
+            response = self.listen_for()
+            if isinstance(response, tuple):
+                data, addr = response
 
-    data = sock.recvfrom(4096)
+            if data:
+                print('Incoming from: {0}'.format(addr))
+                packet = TCPPacket().from_binary(data)
+                print('_____\n{0}\n_____'.format(packet))
+                reply = TCPPacket(tcpflags=0x12, seqNum=1, ackNum=0, data='I am server')
+                self.sock.sendto(reply.bin, addr)
+                return 1
+
+    def s_fin_wait_1(self):
+        pass
+
+    def s_fin_wait_2(self):
+        pass
+
+    def s_time_wait(self):
+        pass
+
+
 
 if __name__ == "__main__":
 
@@ -111,14 +147,10 @@ if __name__ == "__main__":
     delay = False
     server = Server(HOST, PORT_OUT)
     server.run()
-    #
-    # TIMEOUT_S = 3
-    # BUFFSIZE = 1024
-    # address = ('localhost', 1337)
-    #
-    # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    # sock.bind(address)
-    # sock.settimeout(3)
-
-    # data = sock.recvfrom(4096)
-    # tim()
+    # packet = TCPPacket(0xBEBE, 0xCECE, 0xACE1CA72, 0xACE1CA72, verbose=0)
+    # print packet.bin
+    # print packet.hex
+    # print TCPHeader().parse(packet=packet.bin)
+    # pack2 = TCPPacket.from_binary(packet.bin)
+    # pack2.set_syn()
+    # print pack2
