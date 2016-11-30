@@ -6,6 +6,8 @@ from __future__ import print_function, division
 import socket
 import time
 
+PORT_OUT = 1337
+HOST = ''
 
 def send(message, host, port, proto='udp'):
     if proto == 'udp':
@@ -39,4 +41,4 @@ def send(message, host, port, proto='udp'):
 
 if __name__ == "__main__":
     proto = 'tcp'
-    send('Hello {0} server!'.format(proto), config.HOST, config.PORT_OUT, proto)
+    send('Hello {0} server!'.format(proto), PORT_OUT, proto)

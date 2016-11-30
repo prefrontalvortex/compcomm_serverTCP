@@ -5,69 +5,69 @@
 import socket
 import time
 import random
+from header import *
+
+PORT_OUT = 1337
+HOST = 'localhost'
+BACKLOG = 5
+ENCODING = 'utf-8'
+BUFSIZE = 1024
+TIMEOUT_S = 1
 
 
 class Server(object):
-    def __init__(self, host, port, proto='udp', delay=False):
-        self.setup(host, port, proto, delay)
+    def __init__(self, host, port, timeout=1, delay=False):
+        self.setup(host, port, timeout, delay)
+        # self.tim()
 
-    def setup(self, host, port, proto='udp', delay=False):
+    def tim(self):
+        BUFFSIZE = 1024
+        address = ('localhost', 1337)
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.bind(address)
+        sock.settimeout(TIMEOUT_S)
+
+        data = sock.recvfrom(4096)
+
+    def setup(self, host, port, timeout=1, delay=False):
         self.proto = proto
         self.delay = delay
         self.port = port
         self.host = host
+        self.timeout = timeout
 
-        # Datagram (udp) socket: socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        # TCP socket: socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if proto == 'udp':
-            socktype = socket.SOCK_DGRAM
-        elif proto == 'tcp':
-            socktype = socket.SOCK_STREAM
-        else:
-            raise NotImplementedError('Invalid configuration: {0}'.format(proto))
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind((host, port))
+        self.sock.settimeout(1)
 
-        try:
-            self.sock = socket.socket(socket.AF_INET, socktype)
-            print('Socket created')
-        except socket.error as err:
-            print('Failed to create socket. Error Code : ' + str(err[0]) + ' Message ' + err[1])
-            raise err
-
-        try:
-            self.sock.bind((host, port))
-        except socket.error as err:
-            print('Bind failed. Error Code : ' + str(err[0]) + ' Message ' + err[1])
-            raise err
-
-        if proto == 'tcp':
-            self.sock.listen(config.BACKLOG)
 
         print('{0} Socket bind complete. Host: {1}:{2}'.format(proto, host, port))
         try:
             self.run()
+            # sock.recvfrom(4096)
+            pass
         except KeyboardInterrupt:
             print('terminated\n')
-        except socket.error as err:
-            print('___{0}___'.format(err[0]))
+        # except socket.error as err:
+        #     print('socket run error ___{0}___'.format(err[0]))
         finally:
             self.sock.close()
 
 
     def run(self):
-
+        data, addr = None, None
         while 1:
             # receive data from client (data, addr)
             try:
-                if self.proto == 'udp':
-                    data, addr = self.sock.recvfrom(config.BUFSIZE)
-                elif self.proto == 'tcp':
-                    client, address = self.sock.accept()
-                    data = client.recv(config.BUFSIZE)
-                    addr = self.host
+                data, addr = self.sock.recvfrom(BUFSIZE)
+
             except KeyboardInterrupt:
                 print('!keyboard interrupt, terminating\n')
                 self.sock.close()
                 break
+            except socket.timeout as err:
+                print('Timeout occured!')
             except socket.error as err:
                 if err[0] == 9:
                     self.sock.close()
@@ -81,22 +81,44 @@ class Server(object):
             print('_____\n{0}\n_____'.format(str.decode(data)))
 
             reply = data
-            if self.delay:
-                delaytime = random.randint(1,10)
-                print('Sleeping for {0} s'.format(delaytime))
-                time.sleep(delaytime)
-            else:
-                delaytime = 0
+            # if self.delay:
+            #     delaytime = random.randint(1,10)
+            #     print('Sleeping for {0} s'.format(delaytime))
+            #     time.sleep(delaytime)
+            # else:
+            #     delaytime = 0
 
 
             if self.proto == 'udp':
                 self.sock.sendto(reply, addr)
-            elif self.proto == 'tcp':
-                client.send(reply)
+            # elif self.proto == 'tcp':
+            #     client.send(reply)
 
+def tim():
+    TIMEOUT_S = 3
+    BUFFSIZE = 1024
+    address = ('localhost', 1337)
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind(address)
+    sock.settimeout(3)
+
+    data = sock.recvfrom(4096)
 
 if __name__ == "__main__":
-    proto = 'tcp'
+
+    proto = 'udp'
     delay = False
-    server = Server(config.HOST, config.PORT_OUT, proto, delay)
+    server = Server(HOST, PORT_OUT)
     server.run()
+    #
+    # TIMEOUT_S = 3
+    # BUFFSIZE = 1024
+    # address = ('localhost', 1337)
+    #
+    # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # sock.bind(address)
+    # sock.settimeout(3)
+
+    # data = sock.recvfrom(4096)
+    # tim()
